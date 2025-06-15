@@ -1,0 +1,11 @@
+{
+  "name": "data-mapping",
+  "version": "1.0.0",
+  "description": "Translate record field names and formats from various sources into the database schema",
+  "main": "data-mapping.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC"
+}

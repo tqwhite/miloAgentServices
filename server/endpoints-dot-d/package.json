@@ -1,0 +1,11 @@
+{
+  "name": "endpoints-dot-d",
+  "version": "1.0.0",
+  "description": "http endpoints",
+  "main": "endpoints-dot-d.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC"
+}
