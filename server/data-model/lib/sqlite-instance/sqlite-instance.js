@@ -459,6 +459,38 @@ xLog.error(`HACKED: SQL statement in [${moduleName}]`);
 	};
 
 	// ================================================================================
+	// CHECK TABLE EXISTS
+
+	const checkTableExistsActual = (db) => (tableName, callback) => {
+		// Use asynchronous query to check if table exists
+		const query = "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name=?";
+		
+		if (callback) {
+			// Asynchronous version
+			db.get(query, [tableName], (err, result) => {
+				if (err) {
+					xLog.error(`Error checking table existence for ${tableName}: ${err.toString()}`);
+					callback(err, false);
+					return;
+				}
+				const exists = result && result.count > 0;
+				callback(null, exists);
+			});
+		} else {
+			// Synchronous version for compatibility
+			try {
+				const stmt = db.prepare(query);
+				const result = stmt.get(tableName);
+				stmt.finalize();
+				return result && result.count > 0;
+			} catch (err) {
+				xLog.error(`Error checking table existence for ${tableName}: ${err.toString()}`);
+				return false;
+			}
+		}
+	};
+
+	// ================================================================================
 	// INITIALIZE INDEXING AGENTS
 
 	const defaultOptions = {
@@ -470,8 +502,9 @@ xLog.error(`HACKED: SQL statement in [${moduleName}]`);
 	const initDatabaseInstance = (dbFilePath, callback) => {
 		const db = new sqlite3.Database(dbFilePath);
 		const getTable = getTableActual(db, defaultOptions);
+		const checkTableExists = checkTableExistsActual(db);
 
-		callback('', { getTable, jsonToTsv, accessPoints: {} });
+		callback('', { getTable, checkTableExists, jsonToTsv, accessPoints: {} });
 	};
 
 	return { initDatabaseInstance };

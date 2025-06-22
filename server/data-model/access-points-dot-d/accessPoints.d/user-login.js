@@ -60,6 +60,7 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 	const { rootPassword, builtinUserList, builtinsOnly, addBuiltinsToDatabase} = getConfig(moduleName); //moduleName is closure
 
 	const { sqlDb, hxAccess, dataMapping } = passThroughParameters;
+	const { verifyPassword } = dataMapping['profile-user'];
 
 	// ================================================================================
 	// SERVICE FUNCTION - THE MAIN BUSINESS LOGIC
@@ -82,10 +83,35 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 		const taskList = new taskListPlus();
 
 		// --------------------------------------------------------------------------------
-		// PIPELINE STAGE 1: DATABASE TABLE ACQUISITION
+		// PIPELINE STAGE 1: DATABASE TABLE EXISTENCE CHECK
+		// 
+		// EXPLANATION: Check if the users table exists before attempting any operations.
+		// This prevents errors when the database is empty or newly created.
+		// 
+		// PATTERN: Check table existence, then proceed with table acquisition
+		// TABLE NAMING: Use descriptive table names that match your business domain
+		// 
+		// TO MODIFY: Change 'users' to your table name
+
+		taskList.push((args, next) => {
+			const localCallback = (err, tableExists) => {
+				if (err) {
+					// If we can't check table existence, assume it doesn't exist
+					next('', { ...args, tableExists: false });
+					return;
+				}
+				next('', { ...args, tableExists });
+			};
+			
+			args.sqlDb.checkTableExists('users', localCallback);
+		});
+
+		// --------------------------------------------------------------------------------
+		// PIPELINE STAGE 2: DATABASE TABLE ACQUISITION
 		// 
 		// EXPLANATION: Gets reference to database table, creating it if it doesn't exist.
 		// The table is created with standard columns (refId, createdAt, updatedAt) automatically.
+		// Only proceeds if table existence check passed or table creation is needed.
 		// 
 		// PATTERN: Always use mergeArgs(args, next, 'propertyName') to add table to pipeline
 		// TABLE NAMING: Use descriptive table names that match your business domain
@@ -97,7 +123,7 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 		);
 
 		// --------------------------------------------------------------------------------
-		// PIPELINE STAGE 2: OPTIONAL DATA SEEDING
+		// PIPELINE STAGE 3: OPTIONAL DATA SEEDING
 		// 
 		// EXPLANATION: Conditionally adds built-in users to database for testing/admin purposes.
 		// This demonstrates how to handle data seeding and multiple data sources.
@@ -109,12 +135,52 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 
 		if (!builtinsOnly && addBuiltinsToDatabase) {
 			builtinUserList.forEach((userObj) => {
-				taskList.push((args, next) => args.userTable.saveObject({...userObj, source:'addedBuiltin'}, forwardArgs({ next, args })));
+				taskList.push((args, next) => {
+					const { userTable, dataMapping } = args;
+					
+					// Check if user already exists in database before adding
+					const checkCallback = (err, existingUsers = []) => {
+						// If there's an error (likely missing username column), proceed with insert anyway
+						// The saveObject method will create the missing columns automatically
+						if (err) {
+							xLog.status(`Error checking existing user (likely missing column), proceeding with insert: ${err.toString()}`);
+							// Proceed with insert - saveObject will handle missing columns
+							const userWithHashedPassword = {
+								...userObj, 
+								source: 'addedBuiltin',
+								password: dataMapping['profile-user'].hashPassword(userObj.password)
+							};
+							userTable.saveObject(userWithHashedPassword, forwardArgs({ next, args }));
+							return;
+						}
+						
+						// Only add if user doesn't already exist
+						if (existingUsers.length === 0) {
+							// Hash the plaintext password from config when adding to database
+							const userWithHashedPassword = {
+								...userObj, 
+								source: 'addedBuiltin',
+								password: dataMapping['profile-user'].hashPassword(userObj.password)
+							};
+							userTable.saveObject(userWithHashedPassword, forwardArgs({ next, args }));
+						} else {
+							// User already exists, skip seeding
+							next('', args);
+						}
+					};
+					
+					// Query to check if user exists
+					const checkQuery = dataMapping['profile-user'].getSql('byUsername', { 
+						username: userObj.username 
+					});
+					
+					userTable.getData(checkQuery, { suppressStatementLog: true, noTableNameOk: true }, checkCallback);
+				});
 			});
 		}
 
 		// --------------------------------------------------------------------------------
-		// PIPELINE STAGE 3: DATABASE QUERY USING MAPPER PATTERN
+		// PIPELINE STAGE 4: DATABASE QUERY USING MAPPER PATTERN
 		// 
 		// EXPLANATION: Queries database using mapper instead of raw SQL. This is the
 		// preferred pattern for all database access in this system.
@@ -131,16 +197,37 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 		// TO MODIFY: Change mapper name, query name, and parameters for your use case
 
 		taskList.push((args, next) => {
-			const { xQuery, userTable, builtinsOnly, dataMapping } = args;
+			const { xQuery, userTable, dataMapping, tableExists } = args;
 
-			if (builtinsOnly) {
-				next('', args);
+console.log(`\n=-=============   tableExists  ========================= [user-login.js.moduleFunction]\n`);
+
+
+console.log(`tableExists=${tableExists}`);
+
+console.log(`\n=-=============   tableExists  ========================= [user-login.js.moduleFunction]\n`);
+
+
+			// Check if table exists before attempting query
+			if (!tableExists) {
+				// Table doesn't exist, skip database query and continue to built-in fallback
+				next('', { ...args, user: null });
 				return;
 			}
 
+			// ALWAYS check database first, regardless of builtinsOnly setting
+			// Database users take precedence over built-in users
 			const localCallback = (err, userList = []) => {
+				// If there's an error (likely missing username column), continue to built-in fallback
+				if (err) {
+					xLog.status(`Error querying database user (likely missing column), falling back to built-ins: ${err.toString()}`);
+					next('', { ...args, user: null });
+					return;
+				}
+				
 				const user = userList.qtLast();
-				next(err, { ...args, user });
+console.dir({['user']:user}, { showHidden: false, depth: 4, colors: true });
+
+				next('', { ...args, user });
 			};
 
 			const query = dataMapping['profile-user'].getSql('byUsername', { 
@@ -151,17 +238,18 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 		});
 
 		// --------------------------------------------------------------------------------
-		// PIPELINE STAGE 4: FALLBACK DATA SOURCE USING QTOOLS FUNCTIONAL CHAINS
+		// PIPELINE STAGE 5: BUILT-IN USER FALLBACK (ONLY IF NOT FOUND IN DATABASE)
 		// 
-		// EXPLANATION: If database lookup failed, search configuration-based built-in users.
-		// This demonstrates qtools functional programming patterns and fallback strategies.
+		// EXPLANATION: If database lookup found no user, search configuration-based built-in users.
+		// Database users ALWAYS take precedence over built-in users for security.
 		// 
-		// QTOOLS PATTERN:
-		// - qtGetByProperty(propertyName, searchValue, defaultIfNotFound) 
-		// - qtLast() gets the last matching element
-		// - Chaining allows safe navigation even if no matches found
+		// AUTHENTICATION HIERARCHY:
+		// 1. Database users (hashed passwords) - HIGHEST PRIORITY
+		// 2. Built-in users (from config) - FALLBACK ONLY
+		// 3. Root password override - EMERGENCY ACCESS
 		// 
 		// BUSINESS LOGIC: Provides fallback authentication for admin/emergency access
+		// when users haven't been migrated to database yet or for initial system setup.
 		// 
 		// TO MODIFY: Replace with your own fallback data sources or business rules
 
@@ -169,6 +257,7 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 			const { xQuery, builtinUserList } = args;
 			let { user } = args;
 			
+			// Only check built-ins if no user was found in database
 			if (!user) {
 				user = builtinUserList
 					.qtGetByProperty('username', xQuery.username, [])
@@ -220,16 +309,43 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 			builtinsOnly,
 		};
 		pipeRunner(taskList.getList(), initialData, (err, args) => {
-			const { user = {}, rootPassword } = args;
+			const { user = {}, rootPassword, xQuery } = args;
 
-			if (user.password == xQuery.password || rootPassword == xQuery.password) {
-				//			delete user.password; //won't exist in the future when I implement pwHash
+			// AUTHENTICATION HIERARCHY:
+			// 1. Database users (secure hashed passwords) - HIGHEST PRIORITY
+			// 2. Built-in users from config (may be plaintext) - FALLBACK ONLY  
+			// 3. Root password override (plaintext in config) - EMERGENCY ACCESS
+			let authenticated = false;
+			
+			// Check user password - handles both hashed (database) and plaintext (built-in) passwords
+			if (user.password) {
+				if (user.source === 'addedBuiltin' || user.refId) {
+					// Database user - use secure hash verification
+					authenticated = verifyPassword(xQuery.password, user.password);
+				} else {
+					// Built-in user from config - may still be plaintext
+					// TODO: Consider hashing all built-in passwords at startup for consistency
+					authenticated = (xQuery.password === user.password) || verifyPassword(xQuery.password, user.password);
+				}
+			}
+			
+			// Check root password override (emergency access)
+			// Root password is stored as plaintext in config, so compare directly
+			if (!authenticated && rootPassword && xQuery.password === rootPassword) {
+				authenticated = true;
+			}
+
+			if (authenticated) {
+				// Remove password from user object before returning
+				const { password, ...userWithoutPassword } = user;
 				callback('', {
-					user,
+					user: userWithoutPassword,
 				});
 				return;
 			}
-			callback(err, {});
+			
+			// Authentication failed
+			callback('Authentication failed', {});
 		});
 	};
 

@@ -176,7 +176,7 @@ const moduleFunction =
 
 		const libraryPath = path.join(__dirname, 'lib.d');
 		const cliExecutablePaths = listFilesSync(libraryPath);
-		const symlinkDir = createSymlinks(cliExecutablePaths, 'PROJECT_NAME');
+		const symlinkDir = createSymlinks(cliExecutablePaths, 'superSecretCrypto');
 
 		console.log(symlinkDir); //give the new path addition to BASH
 		console.log(`Use addCliModule to create a new CLI tool`);

@@ -10,7 +10,7 @@ const qt = require('qtools-functional-library'); //qt.help({printOutput:true, qu
 
 //START OF moduleFunction() ============================================================
 
-const moduleFunction = ({ moduleName }) => ({pwHash}) => {
+const moduleFunction = ({ moduleName }) => ({pwHash, hashPassword, verifyPassword, validatePasswordStrength}) => {
 	const { xLog, getConfig, rawConfig:unused, commandLineParameters:notUsed } = process.global;
 	const {placeholder} = getConfig(moduleName); //moduleName is closure
 
@@ -46,7 +46,7 @@ const moduleFunction = ({ moduleName }) => ({pwHash}) => {
 
 			resultObject[
 				path.basename(file).replace(path.extname(file), '')
-			] = require(filePath)({ baseMappingProcess, pwHash });
+			] = require(filePath)({ baseMappingProcess, pwHash, hashPassword, verifyPassword, validatePasswordStrength });
 		});
 
 	const outObj = {

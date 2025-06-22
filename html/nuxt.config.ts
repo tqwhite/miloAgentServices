@@ -35,7 +35,7 @@ export default defineNuxtConfig({
   },
 
   devServer: {
-    port: HTML_DEV_PORT, // Set dev server port
+    port: 7773, // Set dev server port
     open: true, // Automatically open browser on start
   },
 
@@ -47,7 +47,7 @@ export default defineNuxtConfig({
   nitro: {
     devProxy: {
       '/api': {
-        target: 'http://localhost:API_DEV_PORT/api/',
+        target: 'http://localhost:7772/api/',
         changeOrigin: true,
         prependPath: true,
       },

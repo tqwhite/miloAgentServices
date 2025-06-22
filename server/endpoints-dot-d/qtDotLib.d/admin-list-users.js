@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 'use strict';
 
-const moduleName = __filename.replace(__dirname + '/', '').replace(/.js$/, ''); //this just seems to come in handy a lot
+/**
+ * ENDPOINT: ADMIN USER LIST
+ * 
+ * This endpoint provides HTTP interface for administrative user listing.
+ * Only users with admin or super privileges can list users.
+ */
+
+const moduleName = __filename.replace(__dirname + '/', '').replace(/.js$/, '');
 const qt = require('qtools-functional-library');
 const { pipeRunner, taskListPlus, mergeArgs, forwardArgs } = new require(
 	'qtools-asynchronous-pipe-plus',
@@ -15,10 +22,9 @@ const moduleFunction = function ({
 }) {
 	// ================================================================================
 	// INITIALIZATION
-	
 
 	const { xLog, getConfig, rawConfig, commandLineParameters } = process.global;
-	const localConfig = getConfig(moduleName); //moduleName is closure
+	const localConfig = getConfig(moduleName);
 
 	const {
 		expressApp,
@@ -29,36 +35,12 @@ const moduleFunction = function ({
 
 	// ================================================================================
 	// SERVICE FUNCTION
-	
 
 	const serviceFunction = (permissionValidator) => (xReq, xRes, next) => {
 		const taskList = new taskListPlus();
 
 		// --------------------------------------------------------------------------------
-		// TASKLIST ITEM TEMPLATE
-
-		// 		taskList.push((args, next) => {
-		// 			const claims = xReq.appValueGetter('authclaims');
-		// 			console.log(
-		// 				`\n=-=============   claims  ========================= [save-user-data.js.moduleFunction]\n`,
-		// 			);
-		//
-		//
-		// 			console.dir(
-		// 				{ ['claims']: claims },
-		// 				{ showHidden: false, depth: 4, colors: true },
-		// 			);
-		//
-		// 			console.log(
-		// 				`\n=-=============   claims  ========================= [save-user-data.js.moduleFunction]\n`,
-		// 			);
-		//
-		//
-		// 			next('', args);
-		// 		});
-
-		// --------------------------------------------------------------------------------
-		// TASKLIST ITEM TEMPLATE
+		// STEP 1: PERMISSION VALIDATION (SECURITY FIRST)
 
 		taskList.push((args, next) =>
 			args.permissionValidator(
@@ -69,76 +51,63 @@ const moduleFunction = function ({
 		);
 
 		// --------------------------------------------------------------------------------
-		// TASKLIST ITEM TEMPLATE
+		// STEP 2: EXTRACT REQUEST PARAMETERS
 
 		taskList.push((args, next) => {
-			const { accessPointsDotD } = args;
-
-			const localCallback = (err, user) => {
-				if (err) {
-					next(`$[err.toString()}  (Q11120246254062540030)`, args); //next('skipRestOfPipe', args);
-					return;
-				}
-				next(err, { ...args, user });
+			// Extract query parameters for filtering/sorting
+			const requestData = {
+				role: xReq.qtGetSurePath('query.role', null),
+				sortBy: xReq.qtGetSurePath('query.sortBy', 'username'),
+				sortOrder: xReq.qtGetSurePath('query.sortOrder', 'asc'),
+				activeOnly: xReq.qtGetSurePath('query.activeOnly', true)
 			};
-			const revisedUser = xReq.body.qtClone();
-			revisedUser.role = revisedUser.role
-				.split(/,/)
-				.filter((item) => item != 'firstTime')
-				.join(',');
-			accessPointsDotD['user-save-data'](revisedUser, localCallback);
+
+			next('', { ...args, requestData });
 		});
 
 		// --------------------------------------------------------------------------------
-		// TASKLIST ITEM TEMPLATE
+		// STEP 3: LIST USERS VIA ACCESS POINT
 
 		taskList.push((args, next) => {
-			const { user, accessTokenHeaderTools } = args;
+			const { accessPointsDotD, requestData } = args;
 
-			const localCallback = (err) => {
+			const localCallback = (err, result) => {
 				if (err) {
-					next(`$[err.toString()}  (Q14620245330253302478)`, args); //next('skipRestOfPipe', args);
+					next(`User listing failed: ${err}`, args);
 					return;
 				}
-				next('', args); //next('', {...args, NAME:result});
+				next('', { ...args, result });
 			};
 
-			//this is the only endpoint that allows the role, firstTime, and it always deletes it.
-			accessTokenHeaderTools.refreshauthtoken(
-				{
-					xReq,
-					xRes,
-					payloadValues: {
-						source: 'save-user-data',
-						user,
-					},
-				},
-				localCallback,
-			);
+			accessPointsDotD['admin-list-users'](requestData, localCallback);
 		});
 
 		// --------------------------------------------------------------------------------
-		// INIT AND EXECUTE THE PIPELINE
+		// EXECUTE PIPELINE AND HANDLE RESPONSE
 
 		const initialData = {
 			accessPointsDotD,
 			permissionValidator,
 			accessTokenHeaderTools,
 		};
-		pipeRunner(taskList.getList(), initialData, (err, args) => {
-			const { user } = args;
 
+		pipeRunner(taskList.getList(), initialData, (err, args) => {
 			if (err) {
-				xRes.status(500).send(`${err.toString()}`);
+				const errorId = qt.generateShortId();
+				xLog.error(`Admin user listing error (${errorId}): ${err}`);
+				xRes.status(400).send(`${err.toString()} (${errorId})`);
 				return;
 			}
 
-			xRes.send([{ refID: user.refId }]);
+			const { result } = args;
+			
+			// Always return array for consistent client handling
+			xRes.send(Array.isArray(result) ? result : [result]);
 		});
 	};
 
 	// ================================================================================
-	// Endpoint Constructor
+	// ENDPOINT REGISTRATION
 
 	const addEndpoint = ({
 		name,
@@ -150,25 +119,24 @@ const moduleFunction = function ({
 		permissionValidator,
 		accessTokenHeaderTools,
 	}) => {
-		expressApp[method](routePath, serviceFunction(permissionValidator)); //uaw expressApp instead of dotD.library
+		expressApp[method](routePath, serviceFunction(permissionValidator));
 		endpointsDotD.logList.push(name);
 	};
 
 	// ================================================================================
-	// Do the constructing
+	// ENDPOINT CONFIGURATION
 
-	const method = 'post';
-	const thisEndpointName = 'saveUserData';
+	const method = 'get';
+	const thisEndpointName = 'adminListUsers';
 	const routePath = `${routingPrefix}${thisEndpointName}`;
 	const name = routePath;
 
+	// Require admin or super privileges
 	const permissionValidator = accessTokenHeaderTools.getValidator([
-		'user',
-		'client',
 		'admin',
 		'super',
-		'firstTime',
 	]);
+
 	addEndpoint({
 		name,
 		method,

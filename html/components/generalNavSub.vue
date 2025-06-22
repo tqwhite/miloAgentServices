@@ -16,6 +16,12 @@
 		       router.currentRoute.value.path === '/work/';
 	});
 
+	// Check if we're on the admin page
+	const isAdminPage = computed(() => {
+		return router.currentRoute.value.path === '/admin' || 
+		       router.currentRoute.value.path === '/admin/';
+	});
+
 	const reloadPage = () => {
 		window.location.href = window.location.href.replace(
 			/^(https?:\/\/[^\/]+).*/,
@@ -27,14 +33,17 @@
 <template>
 	<!-- Top banner (not an app bar) -->
 	<div class="banner justify-center align-center">
-		<h1 class="banner-title">PROJECT_NAME</h1>
+		<h1 class="banner-title">superSecretCrypto</h1>
 	</div>
 
 	<!-- Navigation bar -->
 	<v-app-bar app elevation="0" class="border-bottom border-1"
 		v-if="true || LoginStore.validUser"
 	>
-		<v-app-bar-title class="titleOrange">PROJECT_NAME Tools</v-app-bar-title>
+		<v-app-bar-title class="titleOrange">
+			<template v-if="isAdminPage">Admin Tools</template>
+			<template v-else>superSecretCrypto Tools</template>
+		</v-app-bar-title>
 
 		<v-btn
 			v-if="(LoginStore.loggedInUser.role === 'client') && !isWorkPage"
@@ -43,6 +52,15 @@
 			:to="{ path: 'work' }"
 		>
 			Open Work.vue
+		</v-btn>
+
+		<v-btn
+			v-if="!isAdminPage && LoginStore.loggedInUser.role === 'admin'"
+			prepend-icon="mdi-shield-account"
+			title="Admin Tools"
+			:to="{ path: 'admin' }"
+		>
+			ADMIN
 		</v-btn>
 
 		<v-btn

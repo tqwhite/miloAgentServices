@@ -36,7 +36,7 @@ const qt = require('qtools-functional-library'); //qt.help({printOutput:true, qu
 
 const moduleFunction =
 	({ moduleName }) =>
-	({ baseMappingProcess, pwHash }) => {
+	({ baseMappingProcess, pwHash, hashPassword, verifyPassword, validatePasswordStrength }) => {
 		process.global = process.global ? process.global : {};
 		const xLog = process.global.xLog;
 		
@@ -105,15 +105,28 @@ const moduleFunction =
 			// Remove fields marked with 'XXX' in inputNameMapping
 			delete outObj.XXX; //inputs that are not wanted by the rest of the app are removed
 
-			// ADD CUSTOM TRANSFORMATION LOGIC HERE
-			// Examples:
-			// if (direction === 'forward') {
-			//     outObj.fullName = `${outObj.first} ${outObj.last}`;
-			//     delete outObj.password; // Don't send passwords to client
-			// }
-			// if (direction === 'reverse') {
-			//     outObj.password = pwHash(outObj.password); // Hash passwords before DB
-			// }
+			// CUSTOM TRANSFORMATION LOGIC
+			if (direction === 'forward') {
+				// Database → Application format
+				// Never send password hashes to client
+				delete outObj.password;
+			}
+			
+			if (direction === 'reverse') {
+				// Application → Database format
+				// Hash passwords before storing in database
+				if (outObj.password) {
+					// Only hash if password is provided and not already hashed
+					if (!outObj.password.includes(':')) {
+						try {
+							outObj.password = hashPassword(outObj.password);
+						} catch (error) {
+							xLog.error(`Password hashing failed: ${error.message}`);
+							throw new Error('Password processing failed');
+						}
+					}
+				}
+			}
 
 			return outObj;
 		};
@@ -217,7 +230,13 @@ const moduleFunction =
 		// 
 		// TO MODIFY: Generally no changes needed here
 
-		return { map: mapper, getSql };
+		return { 
+			map: mapper, 
+			getSql,
+			hashPassword,
+			verifyPassword,
+			validatePasswordStrength
+		};
 	};
 
 //END OF moduleFunction() ============================================================
