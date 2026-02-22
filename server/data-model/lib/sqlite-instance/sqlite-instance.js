@@ -14,7 +14,7 @@ const { pipeRunner, taskListPlus, mergeArgs, forwardArgs } = new require(
 
 const sqlString = require('sqlstring-sqlite');
 
-const newRefId = require('../new-refId')({
+const newRefId = require('../new-refid')({
 	excludedChars: ['0', 'O', '1', 'l'],
 	digits: 20,
 });

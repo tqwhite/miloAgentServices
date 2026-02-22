@@ -1,0 +1,7 @@
+node_modules/
+.nuxt/
+.output/
+dist/
+*.sqlite3
+*.log
+.DS_Store
