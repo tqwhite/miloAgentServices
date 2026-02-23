@@ -90,7 +90,7 @@ const runOneAgent = async ({ instruction, config }) => {
 	};
 };
 
-const fanOut = async ({ instructions, config }) => {
+const fanOutParallel = async ({ instructions, config }) => {
 	const { xLog } = process.global;
 	const verbose = config.verbose;
 
@@ -128,6 +128,44 @@ const fanOut = async ({ instructions, config }) => {
 	});
 
 	return { results };
+};
+
+const fanOutSerial = async ({ instructions, config }) => {
+	const { xLog } = process.global;
+	const verbose = config.verbose;
+
+	if (verbose) {
+		xLog.status(`[Fan-Out-Direct] Running ${instructions.length} API calls sequentially (serial mode)...`);
+	}
+
+	const results = [];
+	for (const instruction of instructions) {
+		try {
+			const result = await runOneAgent({ instruction, config });
+			results.push(result);
+			if (verbose) {
+				xLog.status(`[Fan-Out-Direct] Agent ${instruction.id}/${instruction.perspective} completed`);
+			}
+		} catch (err) {
+			results.push({
+				id: instruction.id,
+				perspective: instruction.perspective,
+				instruction: instruction.instruction,
+				findings: `[AGENT FAILED: ${err}]`,
+				model: config.agentModel,
+				cost: { inputTokens: 0, outputTokens: 0, usd: 0 },
+				turns: 0,
+			});
+		}
+	}
+
+	return { results };
+};
+
+const fanOut = async ({ instructions, config }) => {
+	return config.serialFanOut
+		? fanOutSerial({ instructions, config })
+		: fanOutParallel({ instructions, config });
 };
 
 export { runOneAgent, fanOut };

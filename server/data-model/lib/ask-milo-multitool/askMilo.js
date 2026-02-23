@@ -286,6 +286,7 @@ Examples:
 			noSave: !!commandLineParameters.switches.noSave,
 			restoreSwitches: !!commandLineParameters.switches.restoreSwitches,
 			mockApi: !!commandLineParameters.switches.mockApi,
+			serialFanOut: !!commandLineParameters.switches.serialFanOut,
 			firstPromptName,
 			firstPromptText: resolvePrompt(firstPromptName, templateVars),
 			agentPromptName: cfg.agentPromptName || 'chorusResearcher',
