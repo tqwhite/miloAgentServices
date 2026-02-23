@@ -12,8 +12,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
-    "@x402/express": "^0.1.0",
-    "@x402/core": "^0.1.0",
-    "@x402/evm": "^0.1.0"
+    "@x402/express": "^2.4.0",
+    "@x402/core": "^2.4.0",
+    "@x402/evm": "^2.4.0"
   }
 }
