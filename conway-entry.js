@@ -14,7 +14,9 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
 const { spawn } = require('child_process');
-const { paymentMiddleware } = require('x402-express');
+const { paymentMiddleware, x402ResourceServer } = require('@x402/express');
+const { HTTPFacilitatorClient } = require('@x402/core/server');
+const { registerExactEvmScheme } = require('@x402/evm/exact/server');
 
 const PUBLIC_PORT = 3000;
 const API_PORT = 7792;
@@ -45,19 +47,25 @@ setTimeout(() => {
         next();
     });
 
-    // x402 paywall — $1.00 USDC on Base for public askTheChorus
+    // x402 V2 paywall — $1.00 USDC on Base for public askTheChorus
     // Private bypass requests (flagged above) skip the paywall
+    const facilitatorClient = new HTTPFacilitatorClient({ url: 'https://facilitator.x402.org' });
+    const resourceServer = new x402ResourceServer(facilitatorClient);
+    registerExactEvmScheme(resourceServer);
+
     const x402 = paymentMiddleware(
-        '0xDE0629429672D395A93F9a22840fd43cCb01F219',
         {
-            '/api/askTheChorus': {
-                price: '$1.00',
-                network: 'eip155:8453',
-                config: {
-                    description: 'AI Chorus of Experts analysis'
-                }
-            }
-        }
+            'POST /api/askTheChorus': {
+                accepts: [{
+                    scheme: 'exact',
+                    price: '$1.00',
+                    network: 'eip155:8453',
+                    payTo: '0xDE0629429672D395A93F9a22840fd43cCb01F219',
+                }],
+                description: 'AI Chorus of Experts analysis',
+            },
+        },
+        resourceServer,
     );
     app.use((req, res, next) => {
         if (req._skipPaywall) return next();
