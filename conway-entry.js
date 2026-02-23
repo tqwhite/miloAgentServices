@@ -49,7 +49,7 @@ setTimeout(() => {
 
     // x402 V2 paywall — $1.00 USDC on Base for public askTheChorus
     // Private bypass requests (flagged above) skip the paywall
-    const facilitatorClient = new HTTPFacilitatorClient({ url: 'https://facilitator.x402.org' });
+    const facilitatorClient = new HTTPFacilitatorClient();
     const resourceServer = new x402ResourceServer(facilitatorClient);
     registerExactEvmScheme(resourceServer);
 
