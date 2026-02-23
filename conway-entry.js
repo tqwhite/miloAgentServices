@@ -14,6 +14,7 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
 const { spawn } = require('child_process');
+const { paymentMiddleware } = require('x402-express');
 
 const PUBLIC_PORT = 3000;
 const API_PORT = 7792;
@@ -42,6 +43,20 @@ setTimeout(() => {
         req.originalUrl = '/api/askTheChorus';
         next();
     });
+
+    // x402 paywall — $1.00 USDC on Base for public askTheChorus
+    app.use(paymentMiddleware(
+        '0xDE0629429672D395A93F9a22840fd43cCb01F219',
+        {
+            '/api/askTheChorus': {
+                price: '$1.00',
+                network: 'base',
+                config: {
+                    description: 'AI Chorus of Experts analysis'
+                }
+            }
+        }
+    ));
 
     // Proxy /api/* to the backend — keep the /api prefix intact
     app.use('/api', createProxyMiddleware({
