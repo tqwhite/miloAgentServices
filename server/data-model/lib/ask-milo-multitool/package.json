@@ -1,0 +1,20 @@
+{
+  "name": "ask-milo-multitool",
+  "version": "1.0.0",
+  "description": "Configurable AI pipeline and multi-perspective research tool",
+  "main": "askMilo.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "@anthropic-ai/sdk": "latest",
+    "qtools-asynchronous-pipe-plus": "^1.0.4",
+    "qtools-config-file-processor": "^1.0.18",
+    "qtools-functional-library": "^1.0.0",
+    "qtools-parse-command-line": "^1.0.9",
+    "turndown": "^7.2.2"
+  }
+}
