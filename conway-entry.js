@@ -35,6 +35,14 @@ apiServer.on('error', (err) => {
 setTimeout(() => {
     const app = express();
 
+    // Private bypass — unlisted endpoint for internal use
+    // Rewrites path and falls through to the /api proxy below
+    app.post('/api/private/askTheChorus', (req, res, next) => {
+        req.url = '/askTheChorus';
+        req.originalUrl = '/api/askTheChorus';
+        next();
+    });
+
     // Proxy /api/* to the backend — keep the /api prefix intact
     app.use('/api', createProxyMiddleware({
         target: `http://127.0.0.1:${API_PORT}`,
