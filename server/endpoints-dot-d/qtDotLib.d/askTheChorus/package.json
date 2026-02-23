@@ -1,0 +1,11 @@
+{
+  "name": "askTheChorus",
+  "version": "1.0.0",
+  "description": "askMilo multi-perspective research endpoint",
+  "main": "askTheChorus.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC"
+}
