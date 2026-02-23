@@ -52,7 +52,7 @@ setTimeout(() => {
         {
             '/api/askTheChorus': {
                 price: '$1.00',
-                network: 'base',
+                network: 'eip155:8453',
                 config: {
                     description: 'AI Chorus of Experts analysis'
                 }
