@@ -36,9 +36,9 @@ setTimeout(() => {
     const app = express();
 
     // Private bypass — unlisted endpoint for internal use
-    // Rewrites path and falls through to the /api proxy below
+    // Rewrites to /api/askTheChorus and falls through to the proxy below
     app.post('/api/private/askTheChorus', (req, res, next) => {
-        req.url = '/askTheChorus';
+        req.url = '/api/askTheChorus';
         req.originalUrl = '/api/askTheChorus';
         next();
     });
