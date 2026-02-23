@@ -37,15 +37,17 @@ setTimeout(() => {
     const app = express();
 
     // Private bypass — unlisted endpoint for internal use
-    // Rewrites to /api/askTheChorus and falls through to the proxy below
+    // Flags the request to skip x402, then rewrites URL for the backend proxy
     app.post('/api/private/askTheChorus', (req, res, next) => {
+        req._skipPaywall = true;
         req.url = '/api/askTheChorus';
         req.originalUrl = '/api/askTheChorus';
         next();
     });
 
     // x402 paywall — $1.00 USDC on Base for public askTheChorus
-    app.use(paymentMiddleware(
+    // Private bypass requests (flagged above) skip the paywall
+    const x402 = paymentMiddleware(
         '0xDE0629429672D395A93F9a22840fd43cCb01F219',
         {
             '/api/askTheChorus': {
@@ -56,7 +58,11 @@ setTimeout(() => {
                 }
             }
         }
-    ));
+    );
+    app.use((req, res, next) => {
+        if (req._skipPaywall) return next();
+        x402(req, res, next);
+    });
 
     // Proxy /api/* to the backend — keep the /api prefix intact
     app.use('/api', createProxyMiddleware({
