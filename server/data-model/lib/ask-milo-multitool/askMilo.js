@@ -18,7 +18,7 @@ const moduleFunction = ({ moduleName } = {}) => ({ unused } = {}) => {
 	// -- help text --
 	if (commandLineParameters.switches.help) {
 		xLog.result(`
-askMilo -- Configurable AI pipeline
+askMilo -- AI Chorus of Experts Pipeline Processor
 
   Default: single prompt, single call, single response.
   Add --perspectives=N for multi-perspective chorus research.
@@ -36,6 +36,8 @@ Pipeline control:
   --perspectives=N       Number of chorus perspectives. 0 = single-call (default: 0)
   --firstPrompt=NAME     Select prompt from [prompts] section of .ini
   -summarize             Add synthesis stage after chorus (requires perspectives>0)
+  -serialFanOut          Run chorus agents sequentially instead of in parallel
+                         (avoids 429 rate-limit errors on concurrent connections)
   -interrogate           Set prompt to interrogator + prepend analysis framing
 
 Model & driver:
@@ -51,8 +53,8 @@ Model & driver:
 Output control:
   -verbose               Show detailed progress and cost info per stage
   -json                  Output raw JSON instead of formatted text report
-  -dryRun                Run expansion only; show perspectives without research
-  -mockApi               Return canned mock responses (no API calls, for testing)
+  -dryRun                Run with mock responses, no API calls (alias for -mockApi)
+  -mockApi               Same as -dryRun: return canned responses for testing
   -noSave                Do not save this run as a session
   -restoreSwitches       On --resumeSession, restore saved CLI args as defaults
   -help                  Show this help message
@@ -71,7 +73,7 @@ JSON input (programmatic):
   CLI flag parsing entirely. The JSON must have the structure:
     { "switches": {...}, "values": {...}, "fileList": [...] }
 
-  switches   Boolean flags (e.g. mockApi, noSave, verbose, summarize)
+  switches   Boolean flags (e.g. mockApi, noSave, verbose, summarize, serialFanOut)
   values     Keyed arrays    (e.g. model: ["haiku"], perspectives: ["3"])
   fileList   Positional args (the prompt goes here as the first element)
 
@@ -285,7 +287,7 @@ Examples:
 			interrogate,
 			noSave: !!commandLineParameters.switches.noSave,
 			restoreSwitches: !!commandLineParameters.switches.restoreSwitches,
-			mockApi: !!commandLineParameters.switches.mockApi,
+			mockApi: !!commandLineParameters.switches.mockApi || !!commandLineParameters.switches.dryRun,
 			serialFanOut: !!commandLineParameters.switches.serialFanOut,
 			firstPromptName,
 			firstPromptText: resolvePrompt(firstPromptName, templateVars),
