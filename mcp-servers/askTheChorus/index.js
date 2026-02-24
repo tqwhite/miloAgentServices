@@ -4,16 +4,35 @@
  * MCP Server: askTheChorus
  *
  * Exposes the AI Chorus of Experts as an MCP tool.
- * Calls the private (unlisted) endpoint on Conway — no x402 payment.
+ * Pays $1.00 USDC per request via x402 on Base mainnet.
  *
- * Version 1: Blocking HTTP call. Requires MCP_TOOL_TIMEOUT >= 1200000.
+ * Requires MCP_TOOL_TIMEOUT >= 1200000 (20 min) in Claude Code settings.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { x402Client, wrapFetchWithPayment } from '@x402/fetch';
+import { registerExactEvmScheme } from '@x402/evm/exact/client';
+import { privateKeyToAccount } from 'viem/accounts';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 
-const API_URL = 'https://milo2.life.conway.tech/api/private/askTheChorus';
+// --- x402 wallet setup ---
+
+const walletPath = join(homedir(), '.conway', 'wallet.json');
+const wallet = JSON.parse(readFileSync(walletPath, 'utf-8'));
+const signer = privateKeyToAccount(wallet.privateKey);
+
+const paymentClient = new x402Client();
+registerExactEvmScheme(paymentClient, { signer });
+
+const fetchWithPayment = wrapFetchWithPayment(fetch, paymentClient);
+
+// --- MCP server ---
+
+const API_URL = 'https://milo2.life.conway.tech/api/askTheChorus';
 
 const server = new McpServer({
 	name: 'ask-the-chorus',
@@ -24,6 +43,7 @@ server.tool(
 	'ask_the_chorus',
 	'Run an AI Chorus of Experts analysis. Sends a prompt to multiple AI expert perspectives, '
 	+ 'each analyzing independently, then optionally synthesizes their responses. '
+	+ 'Costs $1.00 USDC per request (paid automatically via x402 on Base). '
 	+ 'Takes 5-15 minutes depending on perspectives and model. '
 	+ 'Returns structured JSON with individual perspectives and synthesis.',
 	{
@@ -55,7 +75,7 @@ server.tool(
 		};
 
 		try {
-			const response = await fetch(API_URL, {
+			const response = await fetchWithPayment(API_URL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(requestBody),
