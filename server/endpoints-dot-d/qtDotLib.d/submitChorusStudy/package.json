@@ -1,3 +1,11 @@
 {
-  "comment": "qtools-library-dot-d package - leave blank to use defaults"
+  "name": "submitChorusStudy",
+  "version": "1.0.0",
+  "description": "Submit chorus study endpoint",
+  "main": "submitChorusStudy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC"
 }

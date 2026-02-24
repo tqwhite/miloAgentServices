@@ -1,3 +1,11 @@
 {
-  "comment": "qtools-library-dot-d package - leave blank to use defaults"
+  "name": "chorusStudyStatus",
+  "version": "1.0.0",
+  "description": "Chorus study status check endpoint",
+  "main": "chorusStudyStatus.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TQ White II",
+  "license": "ISC"
 }
