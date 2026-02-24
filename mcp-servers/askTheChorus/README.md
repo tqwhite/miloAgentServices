@@ -7,7 +7,7 @@ Exposes the AI Chorus of Experts as an MCP tool that any MCP-capable AI agent (C
 ## Prerequisites
 
 - Node.js 18+ (for global `fetch`)
-- Conway sandbox running at `milo2.life.conway.tech` with the `/api/private/askTheChorus` endpoint deployed
+- Conway sandbox running at `milo3.life.conway.tech` with the `/api/private/askTheChorus` endpoint deployed
 
 ## Installation
 
@@ -66,6 +66,6 @@ A typical 3-perspective study with synthesis takes 5-15 minutes.
 ## Troubleshooting
 
 - **MCP server not in `/mcp` list** — check settings.json path, restart Claude Code
-- **Connection refused** — is Conway sandbox running? `curl https://milo2.life.conway.tech/api/ping`
+- **Connection refused** — is Conway sandbox running? `curl https://milo3.life.conway.tech/api/ping`
 - **Timeout** — is `MCP_TOOL_TIMEOUT` set? Check `env | grep MCP`
 - **404 on endpoint** — the private endpoint hasn't been deployed to Conway yet

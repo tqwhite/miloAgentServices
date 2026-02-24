@@ -34,8 +34,8 @@ const fetchWithPayment = wrapFetchWithPayment(fetch, paymentClient);
 
 // --- URL constants ---
 
-const SUBMIT_URL = 'https://milo2.life.conway.tech/api/submitChorusStudy';
-const STATUS_URL = 'https://milo2.life.conway.tech/api/chorusStudyStatus';
+const SUBMIT_URL = 'https://milo3.life.conway.tech/api/submitChorusStudy';
+const STATUS_URL = 'https://milo3.life.conway.tech/api/chorusStudyStatus';
 
 // --- MCP server ---
 
