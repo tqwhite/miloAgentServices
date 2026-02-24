@@ -49,12 +49,12 @@ const moduleFunction = function ({ dotD, passThroughParameters }) {
 				return;
 			}
 
-			// Force -json and -noSave — the server owns output formatting and sessions
+			// Force -json. noSave is controlled by the caller —
+			// existing blocking endpoint passes noSave:true, async endpoint does not.
 			const askMiloInput = {
 				switches: {
 					...requestBody.qtGetSurePath('switches', {}),
 					json: true,
-					noSave: true,
 				},
 				values: requestBody.qtGetSurePath('values', {}),
 				fileList: fileList,

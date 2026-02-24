@@ -2,17 +2,14 @@
 'use strict';
 
 /**
- * ENDPOINT: ASK THE CHORUS
+ * ENDPOINT: CHORUS STUDY STATUS
  *
- * POST /api/askTheChorus
+ * GET /api/chorusStudyStatus?sessionName=X&turnNumber=N
  *
- * Accepts the askMilo JSON format in the request body:
- *   { switches: {}, values: {}, fileList: ["your prompt"] }
+ * Returns the status of a previously submitted chorus study.
+ * Reads the session file and reports: running, complete, or error.
  *
- * Delegates to the ask-the-chorus access point which spawns askMilo
- * as a child process. Returns the structured JSON result.
- *
- * Permission: public (x402 payment gating comes later)
+ * Permission: public (no payment required — status checks are free)
  */
 
 const moduleName = __filename.replace(__dirname + '/', '').replace(/.js$/, '');
@@ -27,7 +24,7 @@ const moduleFunction = function ({
 	dotD: endpointsDotD,
 	passThroughParameters,
 }) {
-	const { xLog, getConfig, rawConfig, commandLineParameters } = process.global;
+	const { xLog, getConfig, commandLineParameters } = process.global;
 	const localConfig = getConfig(moduleName);
 
 	const {
@@ -54,43 +51,41 @@ const moduleFunction = function ({
 		);
 
 		// --------------------------------------------------------------------------------
-		// PIPELINE STAGE 2: CALL ASK-THE-CHORUS ACCESS POINT
+		// PIPELINE STAGE 2: CALL CHORUS-STUDY-STATUS ACCESS POINT
 
 		taskList.push((args, next) => {
 			const { accessPointsDotD, requestBody } = args;
 
-			const localCallback = (err, { chorusResult } = {}) => {
+			const localCallback = (err, { statusResult } = {}) => {
 				if (err) {
 					next(err, args);
 					return;
 				}
-				next('', { ...args, chorusResult });
+				next('', { ...args, statusResult });
 			};
 
-			accessPointsDotD['ask-the-chorus'](requestBody, localCallback);
+			accessPointsDotD['chorus-study-status'](requestBody, localCallback);
 		});
 
 		// --------------------------------------------------------------------------------
 		// PIPELINE EXECUTION AND HTTP RESPONSE
 
-		const requestBody = xReq.body || {};
-		// Existing blocking endpoint always uses noSave —
-		// it returns results directly, doesn't need session files
-		if (!requestBody.switches) requestBody.switches = {};
-		requestBody.switches.noSave = true;
-
+		const requestBody = {
+			sessionName: xReq.qtGetSurePath('query.sessionName', ''),
+			turnNumber: xReq.qtGetSurePath('query.turnNumber', '0'),
+		};
 		const initialData = { accessPointsDotD, requestBody, permissionValidator };
 		pipeRunner(taskList.getList(), initialData, (err, args) => {
-			const { chorusResult } = args;
+			const { statusResult } = args;
 
 			if (err) {
 				const errorId = `Q${Math.random().toString().slice(2, 18)}`;
-				xLog.error(`askTheChorus error: ${err} (${errorId})`);
+				xLog.error(`chorusStudyStatus error: ${err} (${errorId})`);
 				xRes.status(500).send(`${err.toString()} (${errorId})`);
 				return;
 			}
 
-			xRes.send(Array.isArray(chorusResult) ? chorusResult : [chorusResult]);
+			xRes.send(Array.isArray(statusResult) ? statusResult : [statusResult]);
 		});
 	};
 
@@ -110,8 +105,8 @@ const moduleFunction = function ({
 		endpointsDotD.logList.push(name);
 	};
 
-	const method = 'post';
-	const thisEndpointName = 'askTheChorus';
+	const method = 'get';
+	const thisEndpointName = 'chorusStudyStatus';
 	const routePath = `${routingPrefix}${thisEndpointName}`;
 	const name = routePath;
 
