@@ -139,7 +139,9 @@ server.tool(
 	'check_chorus_study',
 	'Check the status of a previously submitted chorus study. '
 	+ 'No payment required for status checks. '
-	+ 'Returns: running (still processing), complete (with full result), or error.',
+	+ 'Returns: running (still processing), complete (with full result), or error. '
+	+ 'WARNING: Complete results can be 200KB+ for multi-perspective studies. '
+	+ 'Consider writing results to a file or using a background agent rather than processing inline.',
 	{
 		sessionName: z.string().describe('Session name from submit_chorus_study'),
 		turnNumber: z.number().describe('Turn number to check (usually 1)'),
